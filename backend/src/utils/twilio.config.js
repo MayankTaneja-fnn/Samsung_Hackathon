@@ -9,7 +9,7 @@ function sendOTP(phoneNumber, otp) {
   client.messages
     .create({
       body: `Your OTP is ${otp}`,
-      from: +19064777139, // Your Twilio phone number
+      from: process.env.TWILIO_PHONE_NUMBER, // Your Twilio phone number
       to: phoneNumber       // Example: '+919812345678'
     })
     .then(message => console.log('OTP sent:', message.sid))
