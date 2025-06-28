@@ -9,12 +9,14 @@ import { sendOTP } from '../utils/twilio.config.js';
 const SECRET_KEY = process.env.SESSION_TOKEN_KEY; // use dotenv in production
 
 const sendOtp = async (req, res) => {
+  console.log('Received request to send OTP');
   const { phone } = req.body;
   
   try {
     // 🔍 Check if user already exists
+    console.log(`Checking if phone number ${phone} is already registered`);
     const snap = await db.collection('users').where('phone', '==', phone).get();
-    
+    console.log(snap);
     if (!snap.empty) {
       return res.status(400).json({
         success: false,

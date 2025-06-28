@@ -14,6 +14,6 @@ const port = process.env.PORT || 8000
 
 
 
-app.listen(port, function(){
+app.listen(port,'0.0.0.0', function(){
     console.log(`server started on port ${port}`)
 })

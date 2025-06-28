@@ -2,6 +2,8 @@ import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { db, storage, admin } from "../utils/firebase.config.js";
+import axios from 'axios';
+import {ApiError} from "../utils/ApiError.js";
 
 const cleanUp = (filePath) => {
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -10,12 +12,13 @@ const cleanUp = (filePath) => {
 export const handleSubmitIssue = async (req, res) => {
   try {
     const { description, lat, lng } = req.body;
-    console.log("Received body:", req.body);
+    // console.log("Received body:", req.body);
     const userId = req.userId;
     const mediaFiles = req.files?.media || [];
     const voiceFiles = req.files?.voice || [];
-    console.log(req.body);
+    // console.log(req.body);
     const mediaUrls = [];
+    let severity;
 
     const uploadAndGetUrl = async (file, prefix) => {
       const ext = path.extname(file.originalname);
@@ -46,6 +49,31 @@ export const handleSubmitIssue = async (req, res) => {
       const url = await uploadAndGetUrl(file, "voice");
       mediaUrls.push(url);
     }
+    let aiVerified=false;
+
+    try{
+      // console.log("Sending to AI:", description);
+      const response = await axios.post(`${process.env.FLASK_URL}/categorize`,{description},{headers: {"Content-Type": "application/json"}});
+      // console.log("AI Response:", response.data);
+      if(response){
+        aiVerified = true;
+      }
+      const sev = response.data.urgency;
+      if(sev==0){
+        severity="green"
+      }
+      else if(sev==1){
+        severity="orange"
+      }
+      else if(sev==2){
+        severity="red"
+      }
+      // console.log("sev",severity);
+
+    }catch(error){
+      console.log("error",error);
+      throw new ApiError(500, error.response.data.message);
+    }
 
     const issueData = {
       userId,
@@ -55,7 +83,7 @@ export const handleSubmitIssue = async (req, res) => {
       },
       issueType: "basic_help",
       status: "open",
-      severity: "red",
+      severity,
       description,
       mediaUrls,
       responders: [],
@@ -64,10 +92,11 @@ export const handleSubmitIssue = async (req, res) => {
       resolutionProof: {},
       notifyAuthorities: true,
       authorityType: "ambulance",
-      aiVerified: false,
+      aiVerified,
       flaggedByAI: false,
     };
-    console.log("Issue Data:", issueData);
+    // console.log("Issue Data:", issueData);
+    res.status(200).json({ message: "Issue submitted", data: issueData });
 
     const docRef = await db.collection("posts").add(issueData);
 
@@ -128,28 +157,36 @@ export const handleSubmitIssue = async (req, res) => {
   }
 };
 
-export const handleGetIssues = async (req, res) => {
+// Helper to get user name by userId
+async function getUserNameById(userId) {
   try {
-    const issuesSnapshot = await db.collection("issues").get();
-    const issues = issuesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    res.status(200).json(issues);
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      return userDoc.data().name || '';
+    }
+    return '';
   } catch (err) {
-    console.error("🔥 Error fetching issues:", err);
-    res.status(500).json({ error: "Server Error" });
+    return '';
   }
-};
+}
 
 export const getAllPosts = async (req, res) => {
   try {
     const snap = await db.collection('posts').orderBy('reportedAt', 'desc').get();
+    // Fetch all userIds in posts
+    const userIds = Array.from(new Set(snap.docs.map(doc => doc.data().userId)));
+    // Map userId to name
+    const userIdToName = {};
+    for (const uid of userIds) {
+      userIdToName[uid] = await getUserNameById(uid);
+    }
     const posts = snap.docs.map(doc => {
       const data = doc.data();
       const resolvedCount = (data.responders || []).filter(r => r.status === 'resolved').length;
-      // Convert Firestore Timestamp fields to millis if present
       return {
         id: doc.id,
         ...data,
+        userName: userIdToName[data.userId] || '',
         respondersResolvedCount: resolvedCount,
         reportedAt: data.reportedAt && data.reportedAt.toMillis ? data.reportedAt.toMillis() : data.reportedAt,
         resolvedAt: data.resolvedAt && data.resolvedAt.toMillis ? data.resolvedAt.toMillis() : data.resolvedAt,
@@ -157,6 +194,7 @@ export const getAllPosts = async (req, res) => {
           ...r,
           acceptedAt: r.acceptedAt && r.acceptedAt.toMillis ? r.acceptedAt.toMillis() : r.acceptedAt,
           resolvedAt: r.resolvedAt && r.resolvedAt.toMillis ? r.resolvedAt.toMillis() : r.resolvedAt,
+          userName: userIdToName[r.userId] || '',
         })) : [],
       };
     });
