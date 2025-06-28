@@ -2,5 +2,5 @@
 Flask==3.0.3
 Flask-Cors==4.0.1
 
-groq==0.3.2
-httpx==0.25.0
+groq==0.29.0
+httpx==0.25.2
