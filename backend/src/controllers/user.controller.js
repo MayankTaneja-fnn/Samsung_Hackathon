@@ -45,8 +45,12 @@ const sendOtp = async (req, res) => {
 
 const verifyOtp = (req, res) => {
   const { phone, otp } = req.body;
-  if (otpStore.get(phone) === otp) {
-    otpStore.delete(phone);
+   let formattedPhone1 = phone;
+    if (!phone.startsWith('+91')) {
+      formattedPhone1 = '+91' + phone.replace(/^0+/, '');
+    }
+  if (otpStore.get(formattedPhone1) === otp) {
+    otpStore.delete(formattedPhone1);
     res.send({ success: true });
   } else {
     res.status(400).send({ message: 'Invalid OTP' });
