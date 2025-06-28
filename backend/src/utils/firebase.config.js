@@ -2,16 +2,16 @@ import admin from "firebase-admin";
 
 let serviceAccount;
 
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+// if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   // Deployed on Render (env var in base64 JSON string)
-  serviceAccount = JSON.parse(
-    Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf8')
-  );
-} else {
+serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+console.log("service_account",serviceAccount);
+//   );
+// } else {
   // Local development (reads from firebase-admin-creds.js)
-  const creds = await import("../../firebase-admin-creds.js");
-  serviceAccount = creds.default;
-}
+//   const creds = await import("../../firebase-admin-creds.js");
+//   serviceAccount = creds.default;
+// }
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
