@@ -26,9 +26,9 @@ app.use(cookieParser())
 //importing routes
 // import userRoutes from './routes/user.routes.js'
 // import userRoutes from './routs'
-import userRoutes from './routes/user.routes.js'
-import { errorHandler } from './middlewares/errorHandler.middleware.js'
-import postRoutes from './routes/post.routes.js'
+import userRoutes from './src/routes/user.routes.js'
+import { errorHandler } from './src/middlewares/errorHandler.middleware.js'
+import postRoutes from './src/routes/post.routes.js'
 
 app.use('/user',userRoutes)
 app.use('/post',postRoutes)
