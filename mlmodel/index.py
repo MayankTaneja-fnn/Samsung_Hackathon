@@ -8,8 +8,7 @@ app = Flask(__name__)
 
 # app.use(cors())
 
-CORS(app, resources={r"/*": {"origins": "http://192.168.175.239:3000"}})
-
+CORS(app, resources={r"/*": {"origins": "https://samsung-hackathon.onrender.com"}})
 @app.route('/categorize', methods=['POST'] )
 def categorize_incident():
     print("hello")
