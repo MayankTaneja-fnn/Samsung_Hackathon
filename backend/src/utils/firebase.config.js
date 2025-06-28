@@ -4,7 +4,7 @@ let serviceAccount;
 
 // if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   // Deployed on Render (env var in base64 JSON string)
-serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIALS);
 console.log("service_account",serviceAccount);
 //   );
 // } else {
