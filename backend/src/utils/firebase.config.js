@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
-import serviceAccount from "../../samsung-hackathon-6d0a7-firebase-adminsdk-fbsvc-3539e8db6c.json" assert { type: "json" };
+// import serviceAccount from "../../firebase-admin-creds" assert { type: "json" };
+import  serviceAccount from "../../firebase-admin-creds.js";
 
 if (!admin.apps.length) {
   admin.initializeApp({

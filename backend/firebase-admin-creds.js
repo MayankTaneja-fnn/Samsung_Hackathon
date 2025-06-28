@@ -1,4 +1,4 @@
-{
+export default {
   "type": "service_account",
   "project_id": "samsung-hackathon-6d0a7",
   "private_key_id": "3539e8db6c2e42665412440e5644b359fedd3d51",
