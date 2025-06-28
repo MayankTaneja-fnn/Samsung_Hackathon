@@ -1,4 +1,4 @@
-import {app} from './app.js'
+import {app} from './src/app.js'
 // index.js
 // const { app } = require('./src/app.js');
 
