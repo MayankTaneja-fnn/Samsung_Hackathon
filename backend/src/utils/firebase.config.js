@@ -1,11 +1,10 @@
 import admin from "firebase-admin";
 
-let serviceAccount;
+const serviceAccount = JSON.parse(
+  Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, "base64").toString("utf-8")
+);
 
-// if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  // Deployed on Render (env var in base64 JSON string)
-serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIALS);
-console.log("service_account",serviceAccount);
+console.log("Service Account:", serviceAccount);
 //   );
 // } else {
   // Local development (reads from firebase-admin-creds.js)
