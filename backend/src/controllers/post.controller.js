@@ -115,7 +115,9 @@ export const handleSubmitIssue = async (req, res) => {
           },
         };
 
-        await admin.messaging().sendToDevice(tokens, message);
+        const messaging = admin.messaging();
+        await messaging.sendToDevice(tokens, message);
+
 
         // Save notifications to DB
         for (const token of tokens) {
