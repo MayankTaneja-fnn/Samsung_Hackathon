@@ -72,7 +72,7 @@ export const handleSubmitIssue = async (req, res) => {
         lng: parseFloat(lng),
       },
       issueType: 'basic_help',
-      status: 'open',
+      status: 'in_progress',
       severity,
       description,
       mediaUrls,
