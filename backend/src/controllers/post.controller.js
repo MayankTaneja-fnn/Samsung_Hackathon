@@ -9,16 +9,16 @@ const cleanUp = (filePath) => {
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 };
 
+
 export const handleSubmitIssue = async (req, res) => {
   try {
     const { description, lat, lng } = req.body;
-    // console.log("Received body:", req.body);
     const userId = req.userId;
     const mediaFiles = req.files?.media || [];
     const voiceFiles = req.files?.voice || [];
-    // console.log(req.body);
     const mediaUrls = [];
     let severity;
+    let aiVerified = false;
 
     const uploadAndGetUrl = async (file, prefix) => {
       const ext = path.extname(file.originalname);
@@ -26,53 +26,43 @@ export const handleSubmitIssue = async (req, res) => {
 
       await storage.upload(file.path, {
         destination: dest,
-        metadata: {
-          contentType: file.mimetype,
-        },
+        metadata: { contentType: file.mimetype },
       });
 
       const [url] = await storage.file(dest).getSignedUrl({
-        action: "read",
-        expires: "03-01-2030",
+        action: 'read',
+        expires: '03-01-2030',
       });
 
       cleanUp(file.path);
       return url;
     };
 
+    // Upload media
     for (const file of mediaFiles) {
-      const url = await uploadAndGetUrl(file, "media");
+      const url = await uploadAndGetUrl(file, 'media');
       mediaUrls.push(url);
     }
-
     for (const file of voiceFiles) {
-      const url = await uploadAndGetUrl(file, "voice");
+      const url = await uploadAndGetUrl(file, 'voice');
       mediaUrls.push(url);
     }
-    let aiVerified=false;
 
-    try{
-      // console.log("Sending to AI:", description);
-      const response = await axios.post(`${process.env.FLASK_URL}/categorize`,{description},{headers: {"Content-Type": "application/json"}});
-      console.log("AI Response:", response.data);
-      if(response){
-        aiVerified = true;
-      }
+    // AI Categorization
+    try {
+      const response = await axios.post(
+        `${process.env.FLASK_URL}/categorize`,
+        { description },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      console.log('AI Response:', response.data);
+
+      if (response) aiVerified = true;
       const sev = response.data.urgency;
-      if(sev==0){
-        severity="green"
-      }
-      else if(sev==1){
-        severity="orange"
-      }
-      else if(sev==2){
-        severity="red"
-      }
-      // console.log("sev",severity);
-
-    }catch(error){
-      console.log("error",error);
-      throw new ApiError(500, error.response.data.message);
+      severity = sev === 0 ? 'green' : sev === 1 ? 'orange' : 'red';
+    } catch (error) {
+      console.log('AI Error:', error);
+      throw new ApiError(500, error?.response?.data?.message || 'AI categorization failed');
     }
 
     const issueData = {
@@ -81,8 +71,8 @@ export const handleSubmitIssue = async (req, res) => {
         lat: parseFloat(lat),
         lng: parseFloat(lng),
       },
-      issueType: "basic_help",
-      status: "open",
+      issueType: 'basic_help',
+      status: 'open',
       severity,
       description,
       mediaUrls,
@@ -91,72 +81,78 @@ export const handleSubmitIssue = async (req, res) => {
       resolvedAt: null,
       resolutionProof: {},
       notifyAuthorities: true,
-      authorityType: "ambulance",
+      authorityType: 'ambulance',
       aiVerified,
       flaggedByAI: false,
     };
-    console.log("Issue Data:", issueData);
-    res.status(200).json({ message: "Issue submitted", data: issueData });
 
-    const docRef = await db.collection("posts").add(issueData);
+    // Save to Firestore
+    const docRef = await db.collection('posts').add(issueData);
 
     // Notify users within 2km
-    const issueLocation = { lat: parseFloat(lat), lng: parseFloat(lng) };
     try {
-      // Fetch all users with location and fcmToken
       const usersSnap = await db.collection('users').get();
       const tokens = [];
+
       usersSnap.forEach(doc => {
         const user = doc.data();
         if (user.location && user.fcmToken && user.userId !== userId) {
           const dist = getDistanceFromLatLonInKm(
-            issueLocation.lat,
-            issueLocation.lng,
+            parseFloat(lat),
+            parseFloat(lng),
             user.location.lat,
             user.location.lng
           );
-          if (dist <= 2) {
-            tokens.push(user.fcmToken);
-          }
+          if (dist <= 2) tokens.push(user.fcmToken);
         }
       });
+
       if (tokens.length > 0) {
         const message = {
           notification: {
             title: '🚨 Nearby Help Needed!',
             body: description || 'A new help request was posted near you.',
           },
-          tokens,
         };
-        await admin.messaging().sendMulticast(message);
 
+        await admin.messaging().sendToDevice(tokens, message);
+
+        // Save notifications to DB
         for (const token of tokens) {
-      // Find user by fcmToken
-          const userSnap = await db.collection('users').where('fcmToken', '==', token).get();
+          const userSnap = await db
+            .collection('users')
+            .where('fcmToken', '==', token)
+            .get();
+
           if (!userSnap.empty) {
             const userDoc = userSnap.docs[0];
             await db.collection('notifications').add({
               userId: userDoc.id,
-              issueId: docRef.id, // The issue just created
+              issueId: docRef.id,
               title: '🚨 Nearby Help Needed!',
               body: description || 'A new help request was posted near you.',
               createdAt: new Date(),
               read: false,
             });
           }
-      }
+        }
       }
     } catch (err) {
       console.error('Notification error:', err);
     }
 
-    res.status(200).json({ message: "Issue submitted", id: docRef.id });
+    // Final response (only once)
+    res.status(200).json({
+      message: 'Issue submitted',
+      data: { ...issueData, id: docRef.id },
+    });
   } catch (err) {
-    console.log("🔥 Error submitting issue:", err);
-    console.error("🔥 Error submitting issue:", err);
-    res.status(500).json({ error: "Server Error" });
+    console.error('🔥 Error submitting issue:', err);
+    res.status(500).json({ error: 'Server Error' });
   }
 };
+
+
 
 // Helper to get user name by userId
 async function getUserNameById(userId) {
