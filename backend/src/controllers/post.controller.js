@@ -54,7 +54,7 @@ export const handleSubmitIssue = async (req, res) => {
     try{
       // console.log("Sending to AI:", description);
       const response = await axios.post(`${process.env.FLASK_URL}/categorize`,{description},{headers: {"Content-Type": "application/json"}});
-      // console.log("AI Response:", response.data);
+      console.log("AI Response:", response.data);
       if(response){
         aiVerified = true;
       }
@@ -95,7 +95,7 @@ export const handleSubmitIssue = async (req, res) => {
       aiVerified,
       flaggedByAI: false,
     };
-    // console.log("Issue Data:", issueData);
+    console.log("Issue Data:", issueData);
     res.status(200).json({ message: "Issue submitted", data: issueData });
 
     const docRef = await db.collection("posts").add(issueData);
@@ -152,6 +152,7 @@ export const handleSubmitIssue = async (req, res) => {
 
     res.status(200).json({ message: "Issue submitted", id: docRef.id });
   } catch (err) {
+    console.log("🔥 Error submitting issue:", err);
     console.error("🔥 Error submitting issue:", err);
     res.status(500).json({ error: "Server Error" });
   }
