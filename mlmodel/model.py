@@ -1,8 +1,14 @@
 # pip install groq
 from groq import Groq
+from dotenv import load_dotenv
+import os
+
+# client = Groq(
+#     api_key=("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"),
+# )
 
 client = Groq(
-    api_key=("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"),
+    api_key=os.getenv("GROQ_API_KEY"),
 )
 
 def categorize(description):
